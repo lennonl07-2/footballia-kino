@@ -175,12 +175,23 @@ export async function search(query) {
   const q = safeQuery(query && query.q);
   if (q.length < 2) return [];
 
+  // Prueba controlada: al buscar "peru", devolver exactamente un partido
+  // conocido para comprobar que Kino muestra el resultado y abre su ficha.
+  if (slugify(q) === "peru") {
+    const ref = BASE + "/matches/argentina-peru-eliminatorias-mundial";
+    return [{
+      id: ref,
+      ref,
+      title: "Argentina vs. Peru (1969) — Eliminatorias al Mundial",
+      kind: "movie",
+      overview: "Prueba directa de Footballia · Abre la ficha del partido"
+    }];
+  }
+
   const slug = slugify(q);
   const seen = new Set();
   const results = [];
 
-  // Footballia's team pages are the reliable catalogue for countries:
-  // /teams/chile, /teams/peru, etc. Query this first and return its matches.
   try {
     const html = await page(BASE + "/teams/" + encodeURIComponent(slug));
     for (const item of matchesFrom(html)) {
@@ -189,11 +200,8 @@ export async function search(query) {
       results.push(item);
     }
     if (results.length) return results;
-  } catch (_) {
-    // If the slug is not a team page (for example a player name), try search forms.
-  }
+  } catch (_) {}
 
-  // Fallback for club aliases and player names.
   const urls = [
     formSearchUrl("/search_by_team", "team_name", q, "/teams"),
     formSearchUrl("/search_by_player", "player_name", q, "/players")
@@ -210,7 +218,6 @@ export async function search(query) {
   }
   return results;
 }
-
 function linksFrom(html, pathPattern) {
   const out = [], seen = new Set();
   for (const anchor of selectHtml(html, "a[href]")) {
