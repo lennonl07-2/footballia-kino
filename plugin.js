@@ -114,24 +114,59 @@ export async function settingsStatus() {
   }
 }
 
+function slugify(value) {
+  return String(value || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function formSearchUrl(path, field, q, base) {
+  const params = new URLSearchParams();
+  params.set("utf8", "✓");
+  params.set(field, q);
+  params.set(field.replace("_name", "_id"), "");
+  params.set("url_base", base);
+  return BASE + path + "?" + params.toString();
+}
+
 export async function search(query) {
   const q = safeQuery(query && query.q);
-  if (!q) return [];
-  // Footballia's visible site search uses the query parameter; try the common
-  // public search endpoint first, then the site's root search.
-  const routes = [
-    BASE + "/search?query=" + encodeURIComponent(q),
-    BASE + "/?search=" + encodeURIComponent(q),
-    BASE + "/matches?search=" + encodeURIComponent(q)
+  if (q.length < 2) return [];
+
+  const slug = slugify(q);
+  const urls = [
+    // Footballia exposes separate search forms for teams and players.
+    formSearchUrl("/search_by_team", "team_name", q, "/teams"),
+    formSearchUrl("/search_by_player", "player_name", q, "/players"),
+    // Direct slug pages are a useful fallback for exact names such as Barcelona.
+    BASE + "/teams/" + encodeURIComponent(slug),
+    BASE + "/players/" + encodeURIComponent(slug)
   ];
-  let lastError;
-  for (const url of routes) {
+
+  const results = [];
+  const seen = new Set();
+  const failures = [];
+  for (const url of urls) {
     try {
-      const found = matchesFrom(await page(url));
-      if (found.length) return found.slice(0, 40);
-    } catch (e) { lastError = e; }
+      const html = await page(url);
+      for (const item of matchesFrom(html)) {
+        if (seen.has(item.ref)) continue;
+        seen.add(item.ref);
+        results.push(item);
+        if (results.length >= 100) return results;
+      }
+    } catch (error) {
+      failures.push(String(error && error.message || error));
+    }
   }
-  if (lastError) throw lastError;
+
+  // Return any matches found across both entity types. An empty result is
+  // valid when Footballia has no team/player matches for this query.
+  if (results.length) return results;
+  if (failures.length === urls.length) {
+    throw new Error("No se pudo consultar Footballia: " + failures[0]);
+  }
   return [];
 }
 
