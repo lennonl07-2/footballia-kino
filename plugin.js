@@ -96,8 +96,22 @@ export async function action(key) {
 }
 
 export async function settingsStatus() {
-  const saved = !!cookieHeader();
-  return { accountStatus: saved ? "Sesión guardada. Si caduca, vuelve a iniciar sesión." : "No has vinculado tu cuenta todavía." };
+  const cookies = cookieHeader();
+  if (!cookies) return { accountStatus: "No has vinculado tu cuenta todavía." };
+  try {
+    const r = await kino.fetch(
+      BASE + "/matches/rcd-espanyol-fc-barcelona-liga-1-division-2004-2005",
+      { headers: { Cookie: cookies } }
+    );
+    if (!r.ok) return { accountStatus: "Hay cookies guardadas, pero Footballia respondió " + r.status + ". Vuelve a vincular tu cuenta." };
+    const html = await r.text();
+    if (/sign up for free to watch the match/i.test(html)) {
+      return { accountStatus: "La sesión no está iniciada. Pulsa Iniciar sesión en Footballia y vuelve a intentarlo." };
+    }
+    return { accountStatus: "Sesión vinculada y comprobada en Footballia." };
+  } catch {
+    return { accountStatus: "No se pudo comprobar la sesión. Comprueba tu conexión y vuelve a abrir Ajustes." };
+  }
 }
 
 export async function search(query) {
