@@ -1,7 +1,7 @@
 {
   "id": "footballia",
   "name": "Footballia",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "apiVersion": 20,
   "entry": "plugin.js",
   "description": "Busca partidos completos y competiciones históricas de Footballia",
