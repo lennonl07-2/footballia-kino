@@ -1,33 +1,34 @@
 # Footballia para Kino TV
 
-Plugin comunitario experimental para localizar partidos del catálogo de [Footballia](https://footballia.eu/) y abrirlos con el reproductor de Kino cuando el sitio exponga una fuente de vídeo directa compatible.
+Plugin comunitario para consultar el catálogo de Footballia y probar reproducción nativa cuando la página exponga una URL directa compatible.
 
-## Instalar en Kino
-En Ajustes → Plugins → Agregar un plugin, selecciona **Kino** y escribe:
+## Instalar
+En Kino → Ajustes → Plugins → Agregar → Kino, escribe:
+`lennonl07-2/footballia-kino`
 
-```
-lennonl07-2/footballia-kino
-```
+## Vincular cuenta
+1. Abre Ajustes → Plugins → Footballia → Configurar.
+2. Pulsa **Iniciar sesión en Footballia**.
+3. Inicia sesión con TU propia cuenta en la ventana web de Kino.
+4. Pulsa **Listo** en la barra superior de Kino.
+5. El estado debe indicar que la sesión quedó guardada.
+
+Cada usuario guarda su propia sesión localmente en los ajustes cifrados del plugin. No se comparte la cuenta del autor. La sesión puede caducar y requerir volver a vincularla.
 
 ## Funciones
-- Categorías de competiciones: export `categories()` para aparecer dentro de Categorías de Kino.
+- Categorías de competiciones mediante `categories()`.
 - Búsqueda de partidos.
-- Fila inicial con partidos que Footballia publique en su página principal.
-- Navegación de páginas/categorías que contengan enlaces a partidos.
-- Resolución al reproductor nativo únicamente si el HTML publica una URL directa de vídeo compatible.
+- Fila de partidos de la portada.
+- Navegación de competiciones.
+- Resolver para el reproductor nativo cuando Footballia exponga una URL HTTPS directa compatible.
 
-## Limitación importante
-Footballia puede requerir que cada usuario tenga su propia cuenta y puede proteger el vídeo detrás de su reproductor, sesión o controles de acceso. El plugin no comparte credenciales, no extrae tokens/cookies, no evade DRM, paywalls, suscripciones ni protección anti-hotlink. Si la página no expone una fuente directa autorizada, Kino mostrará un mensaje explicativo en vez de intentar saltarse esos controles.
+## Limitaciones
+- La ventana de inicio de sesión requiere Kino 0.9.81+ y WebView; en Android TV el soporte es experimental.
+- El sitio puede cambiar las cookies, las rutas de búsqueda o su HTML.
+- El resolver no evade DRM, controles de suscripción, tokens de reproducción ni protección anti-hotlink. Si Footballia no entrega una URL directa autorizada, el vídeo no se abrirá en el reproductor nativo.
+- El SDK de Kino debe validar y probarse localmente antes de considerar estable esta versión.
 
-La búsqueda depende de las rutas y del HTML públicos de Footballia, que pueden cambiar. Esta versión es experimental. La pantalla Categorías de Kino requiere el export `categories()` además de `browse`; ya está incluido. La búsqueda y la reproducción deben probarse en la app y con el SDK de Kino.
-
-## Desarrollo
-La estructura sigue la plantilla oficial de plugins de Kino. Para validar localmente, clona el repositorio y ejecuta:
-
-```sh
-node sdk/validate.mjs .
-node sdk/run.mjs ./plugin.js search "Barcelona"
-node sdk/run.mjs ./plugin.js home
-```
-
-Documentación: https://kinotvapp.github.io/kino-plugins/first-plugin/
+Documentación:
+- https://kinotvapp.github.io/kino-plugins/manifest/
+- https://kinotvapp.github.io/kino-plugins/visual-browser/
+- https://kinotvapp.github.io/kino-plugins/section-theme/
