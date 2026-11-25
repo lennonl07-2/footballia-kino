@@ -1,8 +1,8 @@
 {
   "id": "footballia",
   "name": "Footballia",
-  "version": "0.3.0",
-  "apiVersion": 6,
+  "version": "0.4.0",
+  "apiVersion": 20,
   "entry": "plugin.js",
   "description": "Busca partidos completos y competiciones históricas de Footballia",
   "author": "lennonl07-2",
@@ -20,5 +20,44 @@
   "color": "#65B32E",
   "categories": [
     "movies"
+  ],
+  "visualBrowser": true,
+  "settings": [
+    {
+      "key": "account",
+      "label": "Cuenta de Footballia",
+      "type": "section",
+      "hint": "Cada persona inicia sesión con su propia cuenta gratuita. La sesión se guarda cifrada en este dispositivo."
+    },
+    {
+      "key": "login",
+      "label": "Iniciar sesión en Footballia",
+      "type": "action"
+    },
+    {
+      "key": "accountStatus",
+      "label": "Estado de la cuenta",
+      "type": "status"
+    },
+    {
+      "key": "cookieA",
+      "label": "Sesión (1/4)",
+      "type": "password"
+    },
+    {
+      "key": "cookieB",
+      "label": "Sesión (2/4)",
+      "type": "password"
+    },
+    {
+      "key": "cookieC",
+      "label": "Sesión (3/4)",
+      "type": "password"
+    },
+    {
+      "key": "cookieD",
+      "label": "Sesión (4/4)",
+      "type": "password"
+    }
   ]
 }
