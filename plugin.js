@@ -42,15 +42,50 @@ function mediaUrl(href) {
     return u.href;
   } catch { return ""; }
 }
+function attrValue(attrs, name) {
+  const re = new RegExp("\\b" + name + "\\s*=\\s*([\"'])([\\s\\S]*?)\\1", "i");
+  const m = re.exec(attrs || "");
+  return m ? decode(m[2]) : "";
+}
 function matchesFrom(html) {
   const out = [], seen = new Set();
-  const re = /<a\b([^>]*href=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
+  const re = /<a\\b([^>]*href=["']([^"']+)["'][^>]*)>([\\s\\S]*?)<\\/a>/gi;
   let m;
   while ((m = re.exec(html))) {
     const url = abs(m[2]);
     if (!url || !MATCH_PATH.test(new URL(url).pathname) || seen.has(url)) continue;
-    const title = textOf(m[3]) || textOf(m[1].replace(/href=["'][^"']+["']/i, ""));
-    if (!title || title.length < 5) continue;
+
+    const attrs = m[1] || "";
+    const inner = m[3] || "";
+    let title = textOf(inner) ||
+      attrValue(attrs, "title") ||
+      attrValue(attrs, "aria-label") ||
+      attrValue(attrs, "data-original-title");
+
+    if (!title) {
+      const img = /<img\\b([^>]*)>/i.exec(inner);
+      if (img) title = attrValue(img[1], "alt") || attrValue(img[1], "title");
+    }
+
+    // Footballia sometimes puts the match label elsewhere in the table row,
+    // while the clickable poster itself has no text.
+    if (!title) {
+      const rowStart = html.lastIndexOf("<tr", m.index);
+      const rowEnd = html.indexOf("</tr>", m.index);
+      if (rowStart >= 0 && rowEnd > m.index) {
+        const row = html.slice(rowStart, rowEnd + 5);
+        title = textOf(row).replace(/\\b(?:19|20)\\d{2}\\b/g, "").trim();
+      }
+    }
+
+    // Last-resort readable title from the /matches/ slug, so a blank poster
+    // link is not silently discarded.
+    if (!title || title.length < 2) {
+      title = new URL(url).pathname.split("/").pop()
+        .replace(/[-_]+/g, " ").replace(/\\b\\w/g, c => c.toUpperCase());
+    }
+    if (!title || title.length < 2) continue;
+
     seen.add(url);
     out.push({
       id: url, ref: url, title: title.slice(0, 180), kind: "movie",
@@ -59,6 +94,7 @@ function matchesFrom(html) {
   }
   return out;
 }
+
 async function page(url) {
   const headers = {};
   const cookies = cookieHeader();
