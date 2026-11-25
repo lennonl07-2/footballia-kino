@@ -49,9 +49,10 @@ function attrValue(attrs, name) {
 }
 function matchesFrom(html) {
   const out = [], seen = new Set();
-  const re = /<a\\b([^>]*href=["']([^"']+)["'][^>]*)>([\\s\\S]*?)<\\/a>/gi;
+  // Match normal anchor tags. Keep regex escapes single-escaped in literals.
+  const re = /<a\b([^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
-  while ((m = re.exec(html))) {
+  while ((m = re.exec(String(html || "")))) {
     const url = abs(m[2]);
     if (!url || !MATCH_PATH.test(new URL(url).pathname) || seen.has(url)) continue;
 
@@ -63,26 +64,23 @@ function matchesFrom(html) {
       attrValue(attrs, "data-original-title");
 
     if (!title) {
-      const img = /<img\\b([^>]*)>/i.exec(inner);
+      const img = /<img\b([^>]*)>/i.exec(inner);
       if (img) title = attrValue(img[1], "alt") || attrValue(img[1], "title");
     }
 
-    // Footballia sometimes puts the match label elsewhere in the table row,
-    // while the clickable poster itself has no text.
+    // Use the surrounding table row if the match link is only a poster/image.
     if (!title) {
-      const rowStart = html.lastIndexOf("<tr", m.index);
-      const rowEnd = html.indexOf("</tr>", m.index);
+      const rowStart = html.toLowerCase().lastIndexOf("<tr", m.index);
+      const rowEnd = html.toLowerCase().indexOf("</tr>", m.index);
       if (rowStart >= 0 && rowEnd > m.index) {
         const row = html.slice(rowStart, rowEnd + 5);
-        title = textOf(row).replace(/\\b(?:19|20)\\d{2}\\b/g, "").trim();
+        title = textOf(row).replace(/\b(?:19|20)\d{2}\b/g, "").trim();
       }
     }
 
-    // Last-resort readable title from the /matches/ slug, so a blank poster
-    // link is not silently discarded.
     if (!title || title.length < 2) {
       title = new URL(url).pathname.split("/").pop()
-        .replace(/[-_]+/g, " ").replace(/\\b\\w/g, c => c.toUpperCase());
+        .replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
     if (!title || title.length < 2) continue;
 
