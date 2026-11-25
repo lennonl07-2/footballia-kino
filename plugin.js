@@ -134,40 +134,34 @@ export async function search(query) {
   const q = safeQuery(query && query.q);
   if (q.length < 2) return [];
 
-  const slug = slugify(q);
-  const urls = [
-    // Footballia exposes separate search forms for teams and players.
+  // Kino cancela search a los 15 s. Consultamos los dos formularios
+  // oficiales en paralelo y reservamos tiempo para parsear la respuesta.
+  const requests = [
     formSearchUrl("/search_by_team", "team_name", q, "/teams"),
-    formSearchUrl("/search_by_player", "player_name", q, "/players"),
-    // Direct slug pages are a useful fallback for exact names such as Barcelona.
-    BASE + "/teams/" + encodeURIComponent(slug),
-    BASE + "/players/" + encodeURIComponent(slug)
+    formSearchUrl("/search_by_player", "player_name", q, "/players")
   ];
+
+  const responses = await Promise.allSettled(requests.map(async (url) => {
+    const headers = {};
+    const cookies = cookieHeader();
+    if (cookies) headers.Cookie = cookies;
+    const r = await kino.fetch(url, { headers, timeoutMs: 6500 });
+    if (!r.ok) throw new Error("Footballia respondió " + r.status);
+    return r.text();
+  }));
 
   const results = [];
   const seen = new Set();
-  const failures = [];
-  for (const url of urls) {
-    try {
-      const html = await page(url);
-      for (const item of matchesFrom(html)) {
-        if (seen.has(item.ref)) continue;
-        seen.add(item.ref);
-        results.push(item);
-        if (results.length >= 100) return results;
-      }
-    } catch (error) {
-      failures.push(String(error && error.message || error));
+  for (const response of responses) {
+    if (response.status !== "fulfilled") continue;
+    for (const item of matchesFrom(response.value)) {
+      if (seen.has(item.ref)) continue;
+      seen.add(item.ref);
+      results.push(item);
+      if (results.length >= 100) return results;
     }
   }
-
-  // Return any matches found across both entity types. An empty result is
-  // valid when Footballia has no team/player matches for this query.
-  if (results.length) return results;
-  if (failures.length === urls.length) {
-    throw new Error("No se pudo consultar Footballia: " + failures[0]);
-  }
-  return [];
+  return results;
 }
 
 function linksFrom(html, pathPattern) {
