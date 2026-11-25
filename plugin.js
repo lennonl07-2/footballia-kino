@@ -134,24 +134,30 @@ export async function search(query) {
   const q = safeQuery(query && query.q);
   if (q.length < 2) return [];
 
-  // Kino cancela search a los 15 s. Consultamos los dos formularios
-  // oficiales en paralelo y reservamos tiempo para parsear la respuesta.
-  const requests = [
+  const slug = slugify(q);
+  const seen = new Set();
+  const results = [];
+
+  // Footballia's team pages are the reliable catalogue for countries:
+  // /teams/chile, /teams/peru, etc. Query this first and return its matches.
+  try {
+    const html = await page(BASE + "/teams/" + encodeURIComponent(slug));
+    for (const item of matchesFrom(html)) {
+      if (seen.has(item.ref)) continue;
+      seen.add(item.ref);
+      results.push(item);
+    }
+    if (results.length) return results;
+  } catch (_) {
+    // If the slug is not a team page (for example a player name), try search forms.
+  }
+
+  // Fallback for club aliases and player names.
+  const urls = [
     formSearchUrl("/search_by_team", "team_name", q, "/teams"),
     formSearchUrl("/search_by_player", "player_name", q, "/players")
   ];
-
-  const responses = await Promise.allSettled(requests.map(async (url) => {
-    const headers = {};
-    const cookies = cookieHeader();
-    if (cookies) headers.Cookie = cookies;
-    const r = await kino.fetch(url, { headers, timeoutMs: 6500 });
-    if (!r.ok) throw new Error("Footballia respondió " + r.status);
-    return r.text();
-  }));
-
-  const results = [];
-  const seen = new Set();
+  const responses = await Promise.allSettled(urls.map((url) => page(url)));
   for (const response of responses) {
     if (response.status !== "fulfilled") continue;
     for (const item of matchesFrom(response.value)) {
