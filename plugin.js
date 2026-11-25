@@ -47,42 +47,36 @@ function attrValue(attrs, name) {
   const m = re.exec(attrs || "");
   return m ? decode(m[2]) : "";
 }
+function selectHtml(html, selector) {
+  try {
+    return kino.html.select(String(html || ""), selector);
+  } catch (e) {
+    kino.log("HTML selector failed", selector, e && e.message);
+    return [];
+  }
+}
+
 function matchesFrom(html) {
   const out = [], seen = new Set();
-  // Match normal anchor tags. Keep regex escapes single-escaped in literals.
-  const re = /<a\b([^>]*\bhref\s*=\s*["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = re.exec(String(html || "")))) {
-    const url = abs(m[2]);
-    if (!url || !MATCH_PATH.test(new URL(url).pathname) || seen.has(url)) continue;
+  const rows = selectHtml(html, "tr");
 
-    const attrs = m[1] || "";
-    const inner = m[3] || "";
-    let title = textOf(inner) ||
-      attrValue(attrs, "title") ||
-      attrValue(attrs, "aria-label") ||
-      attrValue(attrs, "data-original-title");
+  function addMatch(anchor, rowText) {
+    const attrs = anchor && anchor.attrs ? anchor.attrs : {};
+    const url = abs(attrs.href || "");
+    if (!url || !MATCH_PATH.test(new URL(url).pathname) || seen.has(url)) return;
 
-    if (!title) {
-      const img = /<img\b([^>]*)>/i.exec(inner);
-      if (img) title = attrValue(img[1], "alt") || attrValue(img[1], "title");
+    let title = String(anchor.text || "").trim();
+    if (!title && anchor.html) {
+      const imgs = selectHtml(anchor.html, "img");
+      if (imgs.length) title = String(imgs[0].attrs.alt || imgs[0].attrs.title || "").trim();
     }
-
-    // Use the surrounding table row if the match link is only a poster/image.
-    if (!title) {
-      const rowStart = html.toLowerCase().lastIndexOf("<tr", m.index);
-      const rowEnd = html.toLowerCase().indexOf("</tr>", m.index);
-      if (rowStart >= 0 && rowEnd > m.index) {
-        const row = html.slice(rowStart, rowEnd + 5);
-        title = textOf(row).replace(/\b(?:19|20)\d{2}\b/g, "").trim();
-      }
-    }
-
+    if (!title) title = String(rowText || "").trim();
+    title = title.replace(/\s+/g, " ").trim();
     if (!title || title.length < 2) {
       title = new URL(url).pathname.split("/").pop()
         .replace(/[-_]+/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     }
-    if (!title || title.length < 2) continue;
+    if (!title || title.length < 2) return;
 
     seen.add(url);
     out.push({
@@ -90,9 +84,22 @@ function matchesFrom(html) {
       overview: "Partido completo · Footballia"
     });
   }
+
+  // Footballia puts match links inside table rows. Read the row first so
+  // image-only links still get a useful title from the surrounding row.
+  for (const row of rows) {
+    const anchors = selectHtml(row.html || "", "a[href*='/matches/']");
+    for (const anchor of anchors) addMatch(anchor, row.text);
+  }
+
+  // Search pages may place match links outside a table.
+  if (!out.length) {
+    for (const anchor of selectHtml(html, "a[href*='/matches/']")) {
+      addMatch(anchor, anchor.text);
+    }
+  }
   return out;
 }
-
 async function page(url) {
   const headers = {};
   const cookies = cookieHeader();
@@ -206,19 +213,16 @@ export async function search(query) {
 
 function linksFrom(html, pathPattern) {
   const out = [], seen = new Set();
-  const re = /<a\b([^>]*href=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
-  let m;
-  while ((m = re.exec(html))) {
-    const url = abs(m[2]);
+  for (const anchor of selectHtml(html, "a[href]")) {
+    const url = abs(anchor.attrs && anchor.attrs.href);
     if (!url || !pathPattern.test(new URL(url).pathname) || seen.has(url)) continue;
-    const title = textOf(m[3]);
+    const title = String(anchor.text || "").trim();
     if (!title || title.length < 2) continue;
     seen.add(url);
     out.push({ id: url, title: title.slice(0, 40), ref: url });
   }
   return out;
 }
-
 export async function categories() {
   const html = await page(BASE + "/");
   const found = linksFrom(html, /^\/competitions\//i);
