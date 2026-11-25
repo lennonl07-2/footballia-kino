@@ -1,10 +1,10 @@
 {
   "id": "footballia",
   "name": "Footballia",
-  "version": "0.2.0",
-  "apiVersion": 3,
+  "version": "0.3.0",
+  "apiVersion": 6,
   "entry": "plugin.js",
-  "description": "Busca partidos completos e históricos del archivo Footballia",
+  "description": "Busca partidos completos y competiciones históricas de Footballia",
   "author": "lennonl07-2",
   "homepage": "https://github.com/lennonl07-2/footballia-kino",
   "hosts": [
@@ -17,5 +17,8 @@
     "browse",
     "resolve"
   ],
-  "color": "#65B32E"
+  "color": "#65B32E",
+  "categories": [
+    "movies"
+  ]
 }
