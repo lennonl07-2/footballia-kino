@@ -74,6 +74,34 @@ export async function search(query) {
   return [];
 }
 
+
+function linksFrom(html, pathPattern) {
+  const out = [], seen = new Set();
+  const re = /<a\\b([^>]*href=["']([^"']+)["'][^>]*)>([\\s\\S]*?)<\\/a>/gi;
+  let m;
+  while ((m = re.exec(html))) {
+    const url = abs(m[2]);
+    if (!url || !pathPattern.test(new URL(url).pathname) || seen.has(url)) continue;
+    const title = textOf(m[3]);
+    if (!title || title.length < 2) continue;
+    seen.add(url);
+    out.push({ id: url, title: title.slice(0, 40), ref: url });
+  }
+  return out;
+}
+
+// Kino's "Categorías" screen reads this export. Without it, the plugin installs
+// but contributes no category group there.
+export async function categories() {
+  const html = await page(BASE + "/");
+  const found = linksFrom(html, /^\\/competitions\\//i);
+  return found.slice(0, 24).map((item) => ({
+    id: item.id,
+    title: item.title,
+    ref: item.ref
+  }));
+}
+
 export async function home() {
   const html = await page(BASE + "/");
   const items = matchesFrom(html).slice(0, 30);
