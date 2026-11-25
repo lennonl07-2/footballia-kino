@@ -77,7 +77,7 @@ export async function search(query) {
 
 function linksFrom(html, pathPattern) {
   const out = [], seen = new Set();
-  const re = /<a\\b([^>]*href=["']([^"']+)["'][^>]*)>([\\s\\S]*?)<\\/a>/gi;
+  const re = /<a\b([^>]*href=["']([^"']+)["'][^>]*)>([\s\S]*?)<\/a>/gi;
   let m;
   while ((m = re.exec(html))) {
     const url = abs(m[2]);
@@ -90,11 +90,10 @@ function linksFrom(html, pathPattern) {
   return out;
 }
 
-// Kino's "Categorías" screen reads this export. Without it, the plugin installs
-// but contributes no category group there.
+// Kino's "Categorías" screen reads this export. Each tile opens browse(ref, null).
 export async function categories() {
   const html = await page(BASE + "/");
-  const found = linksFrom(html, /^\\/competitions\\//i);
+  const found = linksFrom(html, /^\/competitions\//i);
   return found.slice(0, 24).map((item) => ({
     id: item.id,
     title: item.title,
